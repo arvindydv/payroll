@@ -1,0 +1,120 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime @default(now())
+}
+
+model Settings {
+  id                     Int      @id @default(1)
+  companyName            String   @default("YUG ENTERPRISES")
+  pfEmployeeRate         Decimal  @default(0.12) @db.Decimal(6, 4)
+  pfWageCeiling          Decimal  @default(15000) @db.Decimal(10, 2)
+  esiEmployeeRate        Decimal  @default(0.0075) @db.Decimal(6, 4)
+  esiWageCeiling         Decimal  @default(21000) @db.Decimal(10, 2)
+  lwfAmount              Decimal  @default(20) @db.Decimal(10, 2)
+  otMultiplier           Decimal  @default(2) @db.Decimal(6, 2)
+  updatedAt              DateTime @updatedAt
+}
+
+model Department {
+  id        String     @id @default(uuid())
+  name      String     @unique
+  employees Employee[]
+  createdAt DateTime   @default(now())
+}
+
+enum EmployeeStatus {
+  ACTIVE
+  INACTIVE
+}
+
+model Employee {
+  id             String              @id @default(uuid())
+  employeeCode   String              @unique
+  name           String
+  fatherName     String?
+  departmentId   String?
+  department     Department?         @relation(fields: [departmentId], references: [id])
+  dateOfJoining  DateTime
+  dateOfBirth    DateTime?
+  esiNumber      String?
+  uanNumber      String?
+  phone          String?
+  basicSalary    Decimal             @db.Decimal(10, 2)
+  hra            Decimal             @default(0) @db.Decimal(10, 2)
+  conveyance     Decimal             @default(0) @db.Decimal(10, 2)
+  status         EmployeeStatus      @default(ACTIVE)
+  attendance     AttendanceRecord[]
+  salarySlips    SalarySlip[]
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  HALF_DAY
+  PAID_LEAVE
+  UNPAID_LEAVE
+  WEEKLY_OFF
+  HOLIDAY
+}
+
+model AttendanceRecord {
+  id         String           @id @default(uuid())
+  employeeId String
+  employee   Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  date       DateTime
+  status     AttendanceStatus
+  otHours    Decimal          @default(0) @db.Decimal(5, 2)
+  notes      String?
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  @@unique([employeeId, date])
+  @@index([date])
+}
+
+enum SalarySlipStatus {
+  DRAFT
+  FINALIZED
+}
+
+model SalarySlip {
+  id               String           @id @default(uuid())
+  employeeId       String
+  employee         Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  month            Int
+  year             Int
+  daysInMonth      Int
+  payableDays      Decimal          @db.Decimal(5, 2)
+  otHours          Decimal          @default(0) @db.Decimal(6, 2)
+  earnedBasic      Decimal          @db.Decimal(10, 2)
+  earnedHra        Decimal          @db.Decimal(10, 2)
+  earnedConveyance Decimal          @db.Decimal(10, 2)
+  otAmount         Decimal          @db.Decimal(10, 2)
+  arrears          Decimal          @default(0) @db.Decimal(10, 2)
+  grossPay         Decimal          @db.Decimal(10, 2)
+  pfDeduction      Decimal          @db.Decimal(10, 2)
+  esiDeduction     Decimal          @db.Decimal(10, 2)
+  lwfDeduction     Decimal          @db.Decimal(10, 2)
+  totalDeductions  Decimal          @db.Decimal(10, 2)
+  netPay           Decimal          @db.Decimal(10, 2)
+  status           SalarySlipStatus @default(DRAFT)
+  generatedAt      DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  @@unique([employeeId, month, year])
+}
