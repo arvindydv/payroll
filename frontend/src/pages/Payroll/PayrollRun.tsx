@@ -2,8 +2,15 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { SalarySlip } from "../../types";
-import { Card } from "../../components/Card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/Card";
+import { Button } from "../../components/ui/Button";
+import { Select } from "../../components/ui/Select";
+import { Badge } from "../../components/ui/Badge";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../../components/ui/Table";
+import { Input } from "../../components/ui/Input";
 import { formatCurrency, MONTH_NAMES, toNumber } from "../../utils/format";
+import { CreditCard, Download, Upload, RefreshCw, FileText, Calculator, DollarSign, CheckCircle, AlertCircle } from "lucide-react";
+import { cn } from "../../utils/cn";
 
 export default function PayrollRun() {
   const now = new Date();
@@ -60,156 +67,234 @@ export default function PayrollRun() {
     { gross: 0, net: 0 }
   );
 
+  const getStatusBadge = (status: string) => {
+    return (
+      <Badge variant={status === "FINALIZED" ? "success" : "warning"}>
+        {status === "FINALIZED" ? (
+          <>
+            <CheckCircle className="h-3 w-3 mr-1" />
+            Finalized
+          </>
+        ) : (
+          <>
+            <AlertCircle className="h-3 w-3 mr-1" />
+            Draft
+          </>
+        )}
+      </Badge>
+    );
+  };
+
   return (
-    <div>
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="text-2xl font-semibold text-slate-900">Payroll</h1>
-        <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
-          <select
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Payroll</h1>
+          <p className="text-muted-foreground mt-1">Generate and manage salary slips</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <Select
             value={month}
             onChange={(e) => setMonth(Number(e.target.value))}
-            className="rounded-md border border-slate-300 px-2 py-1.5 text-sm"
-          >
-            {MONTH_NAMES.map((m, i) => (
-              <option key={m} value={i + 1}>
-                {m}
-              </option>
-            ))}
-          </select>
+            options={MONTH_NAMES.map((m, i) => ({ value: String(i + 1), label: m }))}
+            className="w-36"
+          />
           <input
             type="number"
             value={year}
             onChange={(e) => setYear(Number(e.target.value))}
-            className="w-20 rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+            className="w-20 h-10 rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            min={2020}
+            max={2030}
           />
-          <button
-            onClick={() => generateMutation.mutate()}
-            disabled={generateMutation.isPending}
-            className="rounded-md bg-brand-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-brand-700"
-          >
+          <Button onClick={() => generateMutation.mutate()} disabled={generateMutation.isPending}>
+            <RefreshCw className="h-4 w-4 mr-2" />
             Generate / Refresh
-          </button>
-          <button
-            onClick={exportExcel}
-            disabled={slips.length === 0}
-            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50 disabled:opacity-50"
-          >
+          </Button>
+          <Button variant="outline" onClick={exportExcel} disabled={slips.length === 0}>
+            <Download className="h-4 w-4 mr-2" />
             Export Excel
-          </button>
+          </Button>
         </div>
       </div>
 
       {isLoading ? (
-        <div className="mt-6 text-slate-500">Loading...</div>
+        <Card>
+          <CardContent className="py-12 text-center">
+            <div className="flex flex-col items-center gap-4">
+              <div className="h-12 w-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+              <p className="text-muted-foreground">Loading payroll data...</p>
+            </div>
+          </CardContent>
+        </Card>
       ) : slips.length === 0 ? (
-        <Card className="mt-6 p-8 text-center text-slate-400">
-          No salary slips for this month yet. Click "Generate / Refresh" to compute payroll from
-          attendance.
+        <Card>
+          <CardContent className="py-12 text-center">
+            <div className="flex flex-col items-center gap-4">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+                <Calculator className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <div>
+                <h3 className="text-lg font-medium text-foreground">No salary slips for this month</h3>
+                <p className="text-muted-foreground mt-1">Click "Generate / Refresh" to compute payroll from attendance</p>
+              </div>
+              <Button onClick={() => generateMutation.mutate()} disabled={generateMutation.isPending} size="lg">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Generate Payroll
+              </Button>
+            </div>
+          </CardContent>
         </Card>
       ) : (
         <>
-          <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 gap-4 max-w-xl">
-            <Card className="p-4">
-              <div className="text-xs text-slate-500">Employees</div>
-              <div className="text-lg font-semibold">{slips.length}</div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <CreditCard className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Employees</p>
+                    <p className="text-2xl font-bold text-foreground">{slips.length}</p>
+                  </div>
+                </div>
+              </CardContent>
             </Card>
-            <Card className="p-4">
-              <div className="text-xs text-slate-500">Total Gross</div>
-              <div className="text-lg font-semibold">{formatCurrency(totals.gross)}</div>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400">
+                    <DollarSign className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Gross</p>
+                    <p className="text-2xl font-bold text-foreground">{formatCurrency(totals.gross)}</p>
+                  </div>
+                </div>
+              </CardContent>
             </Card>
-            <Card className="p-4">
-              <div className="text-xs text-slate-500">Total Net Pay</div>
-              <div className="text-lg font-semibold">{formatCurrency(totals.net)}</div>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
+                    <FileText className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Net Pay</p>
+                    <p className="text-2xl font-bold text-foreground">{formatCurrency(totals.net)}</p>
+                  </div>
+                </div>
+              </CardContent>
             </Card>
           </div>
 
-          <Card className="mt-4 overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-left text-slate-500">
-                <tr>
-                  <th className="px-3 py-2">Employee</th>
-                  <th className="px-3 py-2">Days</th>
-                  <th className="px-3 py-2">OT Hrs</th>
-                  <th className="px-3 py-2">Gross</th>
-                  <th className="px-3 py-2">Arrears</th>
-                  <th className="px-3 py-2">PF</th>
-                  <th className="px-3 py-2">ESI</th>
-                  <th className="px-3 py-2">LWF</th>
-                  <th className="px-3 py-2">Net Pay</th>
-                  <th className="px-3 py-2">Status</th>
-                  <th className="px-3 py-2"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {slips.map((slip) => (
-                  <tr key={slip.id}>
-                    <td className="px-3 py-2 font-medium text-slate-800">
-                      {slip.employee?.name}
-                      <div className="text-xs text-slate-400">{slip.employee?.employeeCode}</div>
-                    </td>
-                    <td className="px-3 py-2">
-                      {toNumber(slip.payableDays)}/{slip.daysInMonth}
-                    </td>
-                    <td className="px-3 py-2">{toNumber(slip.otHours)}</td>
-                    <td className="px-3 py-2">{formatCurrency(slip.grossPay)}</td>
-                    <td className="px-3 py-2">
-                      {slip.status === "DRAFT" ? (
-                        <input
-                          type="number"
-                          step="0.01"
-                          defaultValue={toNumber(slip.arrears)}
-                          onChange={(e) =>
-                            setEditing((s) => ({ ...s, [slip.id]: e.target.value }))
-                          }
-                          onBlur={() => {
-                            const value = editing[slip.id];
-                            if (value !== undefined) {
-                              updateArrearsMutation.mutate({ id: slip.id, arrears: parseFloat(value || "0") });
-                            }
-                          }}
-                          className="w-20 rounded-md border border-slate-300 px-2 py-1 text-sm"
-                        />
-                      ) : (
-                        formatCurrency(slip.arrears)
-                      )}
-                    </td>
-                    <td className="px-3 py-2">{formatCurrency(slip.pfDeduction)}</td>
-                    <td className="px-3 py-2">{formatCurrency(slip.esiDeduction)}</td>
-                    <td className="px-3 py-2">{formatCurrency(slip.lwfDeduction)}</td>
-                    <td className="px-3 py-2 font-semibold text-slate-900">
-                      {formatCurrency(slip.netPay)}
-                    </td>
-                    <td className="px-3 py-2">
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                          slip.status === "FINALIZED"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-amber-100 text-amber-700"
-                        }`}
-                      >
-                        {slip.status}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 space-x-2 whitespace-nowrap">
-                      <button
-                        onClick={() => downloadPayslip(slip.id, slip.employee?.employeeCode)}
-                        className="text-brand-600 hover:underline"
-                      >
-                        Payslip
-                      </button>
-                      {slip.status === "DRAFT" && (
-                        <button
-                          onClick={() => finalizeMutation.mutate(slip.id)}
-                          className="text-green-600 hover:underline"
-                        >
-                          Finalize
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <Card>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Employee</TableHead>
+                      <TableHead className="text-center">Days</TableHead>
+                      <TableHead className="text-center">OT Hrs</TableHead>
+                      <TableHead className="text-right">Gross</TableHead>
+                      <TableHead className="text-right">Arrears</TableHead>
+                      <TableHead className="text-right">PF</TableHead>
+                      <TableHead className="text-right">ESI</TableHead>
+                      <TableHead className="text-right">LWF</TableHead>
+                      <TableHead className="text-right">Net Pay</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="w-48 text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {slips.map((slip) => (
+                      <TableRow key={slip.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary font-medium">
+                              {slip.employee?.name?.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <p className="font-medium text-foreground">{slip.employee?.name}</p>
+                              <p className="text-xs text-muted-foreground">{slip.employee?.employeeCode}</p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center font-mono text-sm">
+                          {toNumber(slip.payableDays)}/{slip.daysInMonth}
+                        </TableCell>
+                        <TableCell className="text-center font-mono text-sm">
+                          {toNumber(slip.otHours)}
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-sm font-medium">
+                          {formatCurrency(slip.grossPay)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {slip.status === "DRAFT" ? (
+                            <Input
+                              type="number"
+                              step="0.01"
+                              defaultValue={toNumber(slip.arrears)}
+                              onChange={(e) =>
+                                setEditing((s) => ({ ...s, [slip.id]: e.target.value }))
+                              }
+                              onBlur={() => {
+                                const value = editing[slip.id];
+                                if (value !== undefined) {
+                                  updateArrearsMutation.mutate({ id: slip.id, arrears: parseFloat(value || "0") });
+                                }
+                              }}
+                              className="w-24 h-8 text-right text-sm"
+                            />
+                          ) : (
+                            <span className="font-mono text-sm">{formatCurrency(slip.arrears)}</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-sm text-muted-foreground">
+                          {formatCurrency(slip.pfDeduction)}
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-sm text-muted-foreground">
+                          {formatCurrency(slip.esiDeduction)}
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-sm text-muted-foreground">
+                          {formatCurrency(slip.lwfDeduction)}
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-sm font-bold text-foreground">
+                          {formatCurrency(slip.netPay)}
+                        </TableCell>
+                        <TableCell>{getStatusBadge(slip.status)}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => downloadPayslip(slip.id, slip.employee?.employeeCode)}
+                              className="h-8 w-8"
+                            >
+                              <FileText className="h-4 w-4" />
+                            </Button>
+                            {slip.status === "DRAFT" && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => finalizeMutation.mutate(slip.id)}
+                                disabled={finalizeMutation.isPending}
+                                className="text-green-600 hover:bg-green-100 dark:hover:bg-green-900/30"
+                              >
+                                <CheckCircle className="h-4 w-4 mr-1" />
+                                Finalize
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
           </Card>
         </>
       )}
